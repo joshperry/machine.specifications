@@ -167,7 +167,12 @@ namespace Machine.Specifications.Factories
 
         if (field != null)
         {
-          T val = (T) field.GetValue(instance);
+            T val;
+            if(typeof(IProvideFieldValues).IsAssignableFrom(type))
+                val = (T) type.GetMethod("GetValue").Invoke(instance, new[]{field});
+            else
+                val = (T) field.GetValue(instance);
+
           delegates.Add(val);
         }
 

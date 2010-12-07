@@ -32,12 +32,14 @@ namespace Machine.Specifications
     {
     }
 
+#if !SILVERLIGHT
     protected SpecificationException(
       SerializationInfo info,
       StreamingContext context)
       : base(info, context)
     {
     }    
+#endif
   }
 
   public static class ShouldExtensionMethods
@@ -338,7 +340,11 @@ does contain: {2}", items.EachToUsefulString(), list.EachToUsefulString(), conta
     {
       try
       {
+#if SILVERLIGHT
+        return Convert.ChangeType(original, type, null);
+#else
         return Convert.ChangeType(original, type);
+#endif
       }
       catch 
       {

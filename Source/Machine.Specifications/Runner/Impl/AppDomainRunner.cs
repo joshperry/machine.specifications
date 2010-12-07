@@ -5,6 +5,7 @@ using System.Reflection;
 using System.Security;
 using Machine.Specifications.Utility;
 
+#if !SILVERLIGHT
 namespace Machine.Specifications.Runner.Impl
 {
   public class AppDomainRunner : ISpecificationRunner
@@ -197,3 +198,4 @@ namespace Machine.Specifications.Runner.Impl
     }
   }
 }
+#endif

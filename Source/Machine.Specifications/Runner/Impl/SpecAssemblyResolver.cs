@@ -2,6 +2,7 @@ using System;
 using System.Reflection;
 using System.Security;
 
+#if !SILVERLIGHT
 namespace Machine.Specifications.Runner.Impl
 {
   public class SpecAssemblyResolver : IDisposable
@@ -31,3 +32,4 @@ namespace Machine.Specifications.Runner.Impl
     }
   }
 }
+#endif

@@ -16,7 +16,7 @@ namespace Machine.Specifications.ConsoleRunner
 
     public void ReportException(Exception ex)
     {
-      _console.WriteLine(ex.Message);
+      _console.WriteLine("Error in application: {0}" + ex);
     }
   }
 }

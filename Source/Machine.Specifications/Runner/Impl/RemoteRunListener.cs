@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Security;
 
+#if !SILVERLIGHT
 namespace Machine.Specifications.Runner.Impl
 {
   [Serializable]
@@ -63,3 +64,4 @@ namespace Machine.Specifications.Runner.Impl
     }
   }
 }
+#endif

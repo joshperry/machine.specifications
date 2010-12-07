@@ -34,6 +34,16 @@ namespace Machine.Specifications.ConsoleRunner
       HelpText = "Replaces the standard build reporting with TeamCity test reporting.")]
     public bool TeamCityIntegration = false;
 
+    [Option("w", 
+      "wcf", 
+      HelpText = "Listens to a remote test run with a WCF service, only for Windows Phone.")]
+    public bool WcfListen = false;
+
+    [Option("l", 
+      "loop", 
+      HelpText = "Restarts listening for incoming WCF service test results indefinitely")]
+    public bool Loop = false;
+
     [OptionList("i",
       "include",
       HelpText = "Executes all specifications in contexts with these comma delimited tags. Ex. -i \"foo,bar,foo_bar\"",
@@ -62,6 +72,7 @@ namespace Machine.Specifications.ConsoleRunner
       sb.AppendLine("  -x, --exclude     Exclude specifications in contexts with these comma delimited tags. Ex. -x \"foo,bar,foo_bar\"");
       sb.AppendLine("  -t, --timeinfo    Shows time-related information in HTML output");
       sb.AppendLine("  -s, --silent      Suppress console output");
+      sb.AppendLine("  -w, --wcf         Listens to a remote test run with a WCF service, only for Windows Phone");
       sb.AppendLine("  --teamcity        Reporting for TeamCity CI integration.");
       sb.AppendLine("  --html <PATH>     Outputs an HTML file(s) to path, one-per-assembly w/ index.html (if directory, otherwise all are in one file)");
       sb.AppendLine("  --xml <PATH>      Outputs an XML file(s) to path");

@@ -28,11 +28,13 @@ namespace Machine.Specifications
     {
     }
 
+#if !SILVERLIGHT
     protected SpecificationUsageException(
       SerializationInfo info,
       StreamingContext context) : base(info, context)
     {
     }
+#endif
   }
 
   [Serializable]
@@ -57,10 +59,12 @@ namespace Machine.Specifications
     {
     }
 
+#if !SILVERLIGHT
     protected SpecificationVerificationException(
       SerializationInfo info,
       StreamingContext context) : base(info, context)
     {
     }
+#endif
   }
 }

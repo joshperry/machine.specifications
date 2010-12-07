@@ -10,7 +10,7 @@
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>Machine.Specifications</RootNamespace>
     <AssemblyName>Machine.Specifications</AssemblyName>
-    <TargetFrameworkVersion>v3.5</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <SignAssembly>true</SignAssembly>
     <AssemblyOriginatorKeyFile>..\Machine.snk</AssemblyOriginatorKeyFile>
@@ -94,6 +94,8 @@
     <Reference Include="System.Core">
       <RequiredTargetFramework>3.5</RequiredTargetFramework>
     </Reference>
+    <Reference Include="System.Runtime.Serialization" />
+    <Reference Include="System.ServiceModel" />
   </ItemGroup>
   <ItemGroup>
     <Compile Include="..\SharedAssemblyInfo.cs">
@@ -107,6 +109,7 @@
     <Compile Include="Factories\BehaviorFactory.cs" />
     <Compile Include="Factories\ITagExtractor.cs" />
     <Compile Include="ICleanupAfterEveryContextInAssembly.cs" />
+    <Compile Include="IProvideFieldValues.cs" />
     <Compile Include="Model\Behavior.cs" />
     <Compile Include="Model\BehaviorSpecification.cs" />
     <Compile Include="Runner\Impl\AssemblyRunner.cs" />

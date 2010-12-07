@@ -8,6 +8,7 @@ using Machine.Specifications.Reporting.Generation.Xml;
 using Machine.Specifications.Reporting.Integration;
 using Machine.Specifications.Runner;
 using Machine.Specifications.Runner.Impl;
+using System.ServiceModel;
 
 namespace Machine.Specifications.ConsoleRunner
 {
@@ -42,86 +43,148 @@ namespace Machine.Specifications.ConsoleRunner
         return ExitCode.Failure;
       }
 
-      List<ISpecificationRunListener> listeners = new List<ISpecificationRunListener>();
-
-      var timingListener = new TimingRunListener();
-      listeners.Add(timingListener);
-      listeners.Add(new AssemblyLocationAwareListener());
-
-      ISpecificationRunListener mainListener;
-      if (options.TeamCityIntegration)
+          ISpecificationRunListener mainListener = null;
+      do
       {
-        mainListener = new TeamCityReporter(_console.WriteLine, timingListener);
-      }
-      else
-      {
-        mainListener = new RunListener(_console, options.Silent, timingListener);
-      }
+          List<ISpecificationRunListener> listeners = new List<ISpecificationRunListener>();
 
-      try
-      {
+          var timingListener = new TimingRunListener();
+          listeners.Add(timingListener);
 
-        if (!String.IsNullOrEmpty(options.HtmlPath))
-        {
-          if (IsHtmlPathValid(options.HtmlPath))
+          if (options.TeamCityIntegration)
           {
-            listeners.Add(GetHtmlReportListener(options));
+              mainListener = new TeamCityReporter(_console.WriteLine, timingListener);
           }
           else
           {
-            _console.WriteLine("Invalid html path:" + options.HtmlPath);
-            _console.WriteLine(Resources.UsageStatement);
-            return ExitCode.Failure;
+              mainListener = new RunListener(_console, options.Silent, timingListener);
           }
 
-        }
-
-        if (!String.IsNullOrEmpty(options.XmlPath))
-        {
-          if (IsHtmlPathValid(options.XmlPath))
+          try
           {
-            listeners.Add(GetXmlReportListener(options));
+
+              if (!String.IsNullOrEmpty(options.HtmlPath))
+              {
+                  if (IsHtmlPathValid(options.HtmlPath))
+                  {
+                      listeners.Add(GetHtmlReportListener(options));
+                  }
+                  else
+                  {
+                      _console.WriteLine("Invalid html path:" + options.HtmlPath);
+                      _console.WriteLine(Resources.UsageStatement);
+                      return ExitCode.Failure;
+                  }
+
+              }
+
+              if (!String.IsNullOrEmpty(options.XmlPath))
+              {
+                  if (IsHtmlPathValid(options.XmlPath))
+                  {
+                      listeners.Add(GetXmlReportListener(options));
+                  }
+                  else
+                  {
+                      _console.WriteLine("Invalid xml path:" + options.XmlPath);
+                      _console.WriteLine(Resources.UsageStatement);
+                      return ExitCode.Failure;
+                  }
+              }
+
+              listeners.Add(mainListener);
+
+              if (options.AssemblyFiles.Count == 0)
+              {
+                  _console.WriteLine(Resources.UsageStatement);
+                  return ExitCode.Failure;
+              }
+
+              _console.WriteLine("Files Count: {0} Name: {1}", options.AssemblyFiles.Count, options.AssemblyFiles.Count > 0?options.AssemblyFiles[options.AssemblyFiles.Count-1]:"none");
+              bool runXap = options.AssemblyFiles.Count > 0 && options.AssemblyFiles[options.AssemblyFiles.Count-1].EndsWith(".xap", StringComparison.OrdinalIgnoreCase);
+
+              if (!options.WcfListen && !runXap)
+              {
+                  listeners.Add(new AssemblyLocationAwareListener());
+                  var listener = new AggregateRunListener(listeners);
+
+                  ISpecificationRunner specificationRunner = new AppDomainRunner(listener, options.GetRunOptions());
+                  List<Assembly> assemblies = new List<Assembly>();
+                  foreach (string assemblyName in options.AssemblyFiles)
+                  {
+                      if (!File.Exists(assemblyName))
+                      {
+                          throw NewException.MissingAssembly(assemblyName);
+                      }
+
+                      Assembly assembly = Assembly.LoadFrom(assemblyName);
+                      assemblies.Add(assembly);
+                  }
+
+                  specificationRunner.RunAssemblies(assemblies);
+              }
+              else
+              {
+                  var completionListener = new CompletionListener();
+                  listeners.Add(completionListener);
+
+                  var listener = new AggregateRunListener(listeners);
+
+                  var proxy = new WcfRunnerProxy(listener);
+                  ServiceHost host = null;
+                  try
+                  {
+                      host = new ServiceHost(proxy);
+
+                      host.AddServiceEndpoint(typeof(ISpecificationRunListener), new BasicHttpBinding(), new Uri("http://localhost:5931/MSpecListener"));
+
+                      ((System.ServiceModel.Description.ServiceDebugBehavior)host.Description.Behaviors[typeof(System.ServiceModel.Description.ServiceDebugBehavior)]).IncludeExceptionDetailInFaults = true;
+
+                      var smb = new System.ServiceModel.Description.ServiceMetadataBehavior();
+                      smb.MetadataExporter.PolicyVersion = System.ServiceModel.Description.PolicyVersion.Policy15;
+                      host.Description.Behaviors.Add(smb);
+
+                      host.AddServiceEndpoint(typeof(System.ServiceModel.Description.IMetadataExchange),
+                          System.ServiceModel.Description.MetadataExchangeBindings.CreateMexHttpBinding(), "http://localhost:5931/MSpecListener/MEX");
+
+                      host.Open();
+
+                      _console.WriteLine("=========================================================================");
+                      _console.WriteLine("Waiting for test results via WCF at http://localhost:5931/MSpecListener");
+
+                      if (runXap)
+                      {
+                          var xap = options.AssemblyFiles[options.AssemblyFiles.Count-1];
+                          if (!File.Exists(xap))
+                          {
+                              throw NewException.MissingAssembly(xap);
+                          }
+
+                          var runner = new Wp7DeviceRunner(true);
+                          runner.RunXap(xap);
+                      }
+
+                      completionListener.WaitForRunCompletion();
+                      System.Threading.Thread.Sleep(1000);
+                  }
+                  finally
+                  {
+                      if (host != null && host.State != CommunicationState.Faulted)
+                          host.Close();
+                  }
+              }
           }
-          else
+          catch (Exception ex)
           {
-            _console.WriteLine("Invalid xml path:" + options.XmlPath);
-            _console.WriteLine(Resources.UsageStatement);
-            return ExitCode.Failure;
+              if (System.Diagnostics.Debugger.IsAttached)
+                  System.Diagnostics.Debugger.Break();
+
+              reporter.ReportException(ex);
+              return ExitCode.Error;
           }
-        }
+      } while (options.Loop);
 
-        listeners.Add(mainListener);
-
-        if (options.AssemblyFiles.Count == 0)
-        {
-          _console.WriteLine(Resources.UsageStatement);
-          return ExitCode.Failure;
-        }
-
-        var listener = new AggregateRunListener(listeners);
-
-        ISpecificationRunner specificationRunner = new AppDomainRunner(listener, options.GetRunOptions());
-        List<Assembly> assemblies = new List<Assembly>();
-        foreach (string assemblyName in options.AssemblyFiles)
-        {
-          if (!File.Exists(assemblyName))
-          {
-            throw NewException.MissingAssembly(assemblyName);
-          }
-
-          Assembly assembly = Assembly.LoadFrom(assemblyName);
-          assemblies.Add(assembly);
-        }
-
-        specificationRunner.RunAssemblies(assemblies);
-      }
-      catch (Exception ex)
-      {
-        reporter.ReportException(ex);
-        return ExitCode.Error;
-      }
-
-      if (mainListener is ISpecificationResultProvider)
+      if (mainListener != null && mainListener is ISpecificationResultProvider)
       {
         var errorProvider = (ISpecificationResultProvider)mainListener;
         if (errorProvider.FailureOccured)
@@ -149,5 +212,53 @@ namespace Machine.Specifications.ConsoleRunner
     {
       return new GenerateSparkHtmlReportRunListener(options.HtmlPath, options.ShowTimeInformation);
     }
+
+    class CompletionListener : ISpecificationRunListener
+    {
+        System.Threading.AutoResetEvent _waiter = new System.Threading.AutoResetEvent(false);
+
+        public void WaitForRunCompletion()
+        {
+            _waiter.WaitOne();
+        }
+
+        public void OnAssemblyStart(AssemblyInfo assembly)
+        {
+        }
+
+        public void OnAssemblyEnd(AssemblyInfo assembly)
+        {
+        }
+
+        public void OnRunStart()
+        {
+        }
+
+        public void OnRunEnd()
+        {
+            _waiter.Set();
+        }
+
+        public void OnContextStart(ContextInfo context)
+        {
+        }
+
+        public void OnContextEnd(ContextInfo context)
+        {
+        }
+
+        public void OnSpecificationStart(SpecificationInfo specification)
+        {
+        }
+
+        public void OnSpecificationEnd(SpecificationInfo specification, Result result)
+        {
+        }
+
+        public void OnFatalError(ExceptionResult exception)
+        {
+        }
+    }
+
   }
 }

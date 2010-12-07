@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Runtime.Serialization;
 
 namespace Machine.Specifications
 {
@@ -11,15 +12,20 @@ namespace Machine.Specifications
     Ignored
   }
 
-  [Serializable]
+  [DataContract]
   public class ExceptionResult
   {
     readonly string _toString;
 
+      [DataMember]
     public string FullTypeName { get; private set; }
+      [DataMember]
     public string TypeName { get; private set; }
+      [DataMember]
     public string Message { get; private set; }
+      [DataMember]
     public string StackTrace { get; private set; }
+      [DataMember]
     public ExceptionResult InnerExceptionResult { get; private set; }
 
     public ExceptionResult(Exception exception)
@@ -101,28 +107,24 @@ namespace Machine.Specifications
     #endregion
   }
 
-  [Serializable]
+  [DataContract]
   public class Result
   {
-    readonly Status _status;
-    readonly IDictionary<string, IDictionary<string, string>> _supplements = new Dictionary<string, IDictionary<string, string>>();
+      private IDictionary<string, IDictionary<string, string>> _supplements = new Dictionary<string, IDictionary<string, string>>();
 
-    public IDictionary<string, IDictionary<string, string>> Supplements
-    {
-      get { return _supplements; }
-    }
+      [DataMember]
+      public IDictionary<string, IDictionary<string, string>> Supplements { get { return _supplements; } private set { _supplements = value; } }
 
     public bool Passed
     {
-      get { return _status == Status.Passing; }
+      get { return Status == Status.Passing; }
     }
 
+      [DataMember]
     public ExceptionResult Exception { get; private set; }
 
-    public Status Status
-    {
-      get { return _status; }
-    }
+      [DataMember]
+      public Status Status { get; private set; }
 
     public string ConsoleOut
     {
@@ -138,33 +140,33 @@ namespace Machine.Specifications
 
     public bool HasSupplement(string name)
     {
-      return _supplements.ContainsKey(name);
+      return Supplements.ContainsKey(name);
     }
 
     public IDictionary<string, string> GetSupplement(string name)
     {
-      return _supplements[name];
+      return Supplements[name];
     }
 
     private Result(Exception exception)
     {
-      _status = Status.Failing;
+      Status = Status.Failing;
       this.Exception = new ExceptionResult(exception);
     }
 
     private Result(Status status)
     {
-      _status = status;
+      Status = status;
     }
 
     private Result(Result result, string supplementName, IDictionary<string, string> supplement)
     {
-      _status = result.Status;
+      Status = result.Status;
       this.Exception = result.Exception;
 
-      foreach (var pair in result._supplements)
+      foreach (var pair in result.Supplements)
       {
-        _supplements.Add(pair);
+        Supplements.Add(pair);
       }
 
       if (HasSupplement(supplementName))
@@ -172,7 +174,7 @@ namespace Machine.Specifications
         throw new ArgumentException("Result already has supplement named: " + supplementName, "supplementName");
       }
 
-      _supplements.Add(supplementName, supplement);
+      Supplements.Add(supplementName, supplement);
       this.ConsoleOut = result.ConsoleOut;
       this.ConsoleError = result.ConsoleError;
     }

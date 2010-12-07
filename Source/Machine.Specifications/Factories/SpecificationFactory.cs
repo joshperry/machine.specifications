@@ -10,7 +10,11 @@ namespace Machine.Specifications.Factories
     public Specification CreateSpecification(Context context, FieldInfo specificationField)
     {
       bool isIgnored = context.IsIgnored || specificationField.HasAttribute<IgnoreAttribute>();
-      It it = (It) specificationField.GetValue(context.Instance);
+      It it;
+      if(typeof(IProvideFieldValues).IsAssignableFrom(context.Type))
+        it = (It) context.Type.GetMethod("GetValue").Invoke(context.Instance, new[]{specificationField});
+      else
+        it = (It) specificationField.GetValue(context.Instance);
       string name = specificationField.Name.ToFormat();
 
       return new Specification(name, it, isIgnored, specificationField);
